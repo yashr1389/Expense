@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Expense">
+<meta name="theme-color" content="#0f766e">
+<title>Expense</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--ink:#14212b;--mut:#6b7a86;--pri:#0f766e;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--line:#e3e8ec}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1419;--card:#18212a;--ink:#e8eef2;--mut:#8fa1ae;--pri:#2dd4bf;--line:#263340}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;padding-bottom:84px}
+header{padding:calc(14px + env(safe-area-inset-top)) 16px 8px;font-size:22px;font-weight:700}
+header small{display:block;font-size:13px;font-weight:400;color:var(--mut)}
+main{padding:0 14px 14px;max-width:640px;margin:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+h3{margin:0 0 8px;font-size:15px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.big{font-size:30px;font-weight:700}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.bar{height:10px;background:var(--line);border-radius:8px;overflow:hidden;margin:6px 0}
+.bar>i{display:block;height:100%;background:var(--ok);border-radius:8px}
+input,select,button{font:inherit;border-radius:10px;border:1px solid var(--line);padding:11px;background:var(--card);color:var(--ink);width:100%}
+label{font-size:13px;color:var(--mut);display:block;margin:10px 0 4px}
+button{background:var(--pri);color:#fff;border:0;font-weight:600;margin-top:12px}
+button.sec{background:transparent;color:var(--pri);border:1px solid var(--pri)}
+button.sm{width:auto;padding:6px 10px;margin:0;font-size:13px}
+button.del{background:transparent;color:var(--bad);border:0;width:auto;padding:4px 8px;margin:0}
+.seg{display:flex;gap:8px}.seg label{flex:1;margin:0}
+.seg input{display:none}
+.seg span{display:block;text-align:center;padding:11px;border:1px solid var(--line);border-radius:10px;color:var(--ink)}
+.seg input:checked+span{background:var(--pri);color:#fff;border-color:var(--pri)}
+.item{padding:10px 0;border-bottom:1px solid var(--line)}.item:last-child{border:0}
+.tag{font-size:11px;padding:2px 7px;border-radius:20px;background:var(--line);color:var(--mut);margin-left:6px}
+.tag.want{background:#fde8c8;color:#92400e}
+.alert{padding:10px 12px;border-radius:10px;margin:8px 0;font-size:14px}
+.alert.warn{background:#fef3c7;color:#92400e}.alert.bad{background:#fee2e2;color:#991b1b}.alert.ok{background:#dcfce7;color:#166534}
+.mut{color:var(--mut);font-size:13px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;color:var(--mut);border:0;margin:0;border-radius:0;padding:10px 2px;font-size:11px;font-weight:600}
+nav button.on{color:var(--pri)}
+nav b{display:block;font-size:20px}
+.hide{display:none}
+canvas{width:100%;height:160px}
+</style>
+</head>
+<body>
+<header>Expense <small id="sub"></small></header>
+<main>
+
+<section id="home">
+  <div class="card"><h3>This month</h3>
+    <div class="row"><div class="big" id="spent">₹0</div><div class="mut" id="ofBudget"></div></div>
+    <div class="bar"><i id="mbar" style="width:0"></i></div>
+    <div class="mut" id="left"></div>
+  </div>
+  <div id="alerts"></div>
+  <div class="card"><h3>By category</h3><div id="cats"></div></div>
+  <div class="card"><h3>Recent</h3><div id="recent"></div></div>
+</section>
+
+<section id="add" class="hide">
+  <div class="card"><h3>Add expense</h3>
+    <label>Amount (₹)</label><input id="amt" type="number" inputmode="decimal" placeholder="0">
+    <label>Category</label><select id="cat"></select>
+    <label>Was it a need or a want?</label>
+    <div class="seg">
+      <label><input type="radio" name="nw" value="need" checked><span>Need</span></label>
+      <label><input type="radio" name="nw" value="want"><span>Want</span></label>
+    </div>
+    <label>Note (optional)</label><input id="note" placeholder="e.g. Zomato dinner">
+    <label>Date</label><input id="date" type="date">
+    <button id="save">Save expense</button>
+    <div class="alert hide" id="addMsg"></div>
+  </div>
+</section>
+
+<section id="wait" class="hide">
+  <div class="card"><h3>24-hour wait-list</h3>
+    <div class="mut">Want to buy something on impulse? Park it here. If you still want it after 24 hours, buy it. Most urges fade.</div>
+    <label>What do you want to buy?</label><input id="wItem" placeholder="e.g. Sneakers">
+    <label>Price (₹)</label><input id="wAmt" type="number" inputmode="decimal">
+    <button id="wAdd">Add to wait-list</button>
+  </div>
+  <div class="card"><h3>Waiting</h3><div id="wList"></div></div>
+  <div class="card"><h3>Saved by waiting</h3><div class="big" id="wSaved">₹0</div></div>
+</section>
+
+<section id="report" class="hide">
+  <div class="card"><h3>Last 7 days</h3>
+    <div class="row"><div class="big" id="wkTot">₹0</div><div class="mut" id="wkWant"></div></div>
+    <canvas id="chart" width="600" height="320"></canvas>
+  </div>
+  <div class="card"><h3>Your top 3 leaks (wants)</h3><div id="leaks"></div></div>
+  <div class="card"><h3>Savings goal</h3>
+    <div id="goalView"></div>
+    <label>Goal name</label><input id="gName" placeholder="e.g. NEET-PG coaching fund">
+    <label>Target (₹)</label><input id="gTarget" type="number" inputmode="decimal">
+    <button class="sec" id="gSet">Set goal</button>
+    <label>Add to savings (₹)</label><input id="gAdd" type="number" inputmode="decimal">
+    <button id="gAddBtn">Add savings</button>
+  </div>
+</section>
+
+<section id="set" class="hide">
+  <div class="card"><h3>Monthly budget</h3>
+    <label>Total monthly budget (₹)</label><input id="bTotal" type="number" inputmode="decimal">
+    <div id="bCats"></div>
+    <button id="bSave">Save budgets</button>
+    <div class="mut" style="margin-top:8px">Tip: category budgets should add up to your total. You get a warning at 80%.</div>
+  </div>
+  <div class="card"><h3>Backup</h3>
+    <div class="mut">Your data lives only in this browser. Export a backup now and then.</div>
+    <button id="exp">Export backup</button>
+    <button class="sec" id="impBtn">Import backup</button>
+    <input type="file" id="imp" accept="application/json" class="hide">
+    <button class="sec" id="exCsv">Export CSV</button>
+  </div>
+</section>
+
+</main>
+
+<nav id="nav">
+  <button data-t="home" class="on"><b>🏠</b>Home</button>
+  <button data-t="add"><b>➕</b>Add</button>
+  <button data-t="wait"><b>⏳</b>Wait</button>
+  <button data-t="report"><b>📊</b>Report</button>
+  <button data-t="set"><b>⚙️</b>Budget</button>
+</nav>
+
+<script>
+const CATS=["Food","Travel","Books & Study","Subscriptions","Shopping","Entertainment","Health","Other"];
+const KEY="kharcha_v1";
+let S={expenses:[],monthly:0,budgets:{},wait:[],waitSaved:0,goal:null};
+try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const $=id=>document.getElementById(id);
+const inr=n=>"₹"+Math.round(n).toLocaleString("en-IN");
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+const ym=()=>today().slice(0,7);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+// tabs
+document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("#nav button").forEach(x=>x.classList.toggle("on",x===b));
+  ["home","add","wait","report","set"].forEach(t=>$(t).classList.toggle("hide",t!==b.dataset.t));
+  render();window.scrollTo(0,0);
+});
+
+// setup selects
+$("cat").innerHTML=CATS.map(c=>`<option>${esc(c)}</option>`).join("");
+$("date").value=today();
+$("bCats").innerHTML=CATS.map((c,i)=>`<label>${esc(c)} budget (₹)</label><input type="number" inputmode="decimal" id="bc${i}">`).join("");
+
+function monthExp(){return S.expenses.filter(e=>e.date.slice(0,7)===ym())}
+function sum(a){return a.reduce((t,e)=>t+e.amt,0)}
+
+function render(){
+  const me=monthExp(),tot=sum(me);
+  $("sub").textContent=new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long"});
+  $("spent").textContent=inr(tot);
+  const B=S.monthly;
+  if(B>0){
+    const p=Math.min(100,tot/B*100);
+    $("ofBudget").textContent="of "+inr(B);
+    $("mbar").style.width=p+"%";
+    $("mbar").style.background=p>=100?"var(--bad)":p>=80?"var(--warn)":"var(--ok)";
+    const now=new Date(),dim=new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),dl=dim-now.getDate()+1;
+    $("left").textContent=tot>B?`Over budget by ${inr(tot-B)}`:`${inr(B-tot)} left · about ${inr((B-tot)/dl)}/day for ${dl} days`;
+  }else{$("ofBudget").textContent="No budget set";$("mbar").style.width="0";$("left").textContent="Set a monthly budget in the Budget tab.";}
+
+  // alerts
+  let al="";
+  if(B>0){const p=tot/B*100;
+    if(p>=100)al+=`<div class="alert bad">You crossed your monthly budget. Stop non-essentials for the rest of the month.</div>`;
+    else if(p>=80)al+=`<div class="alert warn">You have used ${Math.round(p)}% of your budget. Slow down.</div>`;}
+  const by={};me.forEach(e=>by[e.cat]=(by[e.cat]||0)+e.amt);
+  CATS.forEach(c=>{const b=S.budgets[c]||0;if(b>0&&by[c]){const p=by[c]/b*100;
+    if(p>=100)al+=`<div class="alert bad">${esc(c)}: over budget (${inr(by[c])} of ${inr(b)})</div>`;
+    else if(p>=80)al+=`<div class="alert warn">${esc(c)}: ${Math.round(p)}% used</div>`;}});
+  $("alerts").innerHTML=al;
+
+  // categories
+  $("cats").innerHTML=CATS.filter(c=>by[c]||S.budgets[c]).map(c=>{
+    const v=by[c]||0,b=S.budgets[c]||0,p=b?Math.min(100,v/b*100):0;
+    const col=p>=100?"var(--bad)":p>=80?"var(--warn)":"var(--ok)";
+    return `<div class="item"><div class="row"><span>${esc(c)}</span><span>${inr(v)}${b?" / "+inr(b):""}</span></div>${b?`<div class="bar"><i style="width:${p}%;background:${col}"></i></div>`:""}</div>`}).join("")||`<div class="mut">No expenses yet this month.</div>`;
+
+  // recent
+  const rec=[...S.expenses].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,15);
+  $("recent").innerHTML=rec.map(e=>`<div class="item row"><div><b>${inr(e.amt)}</b> ${esc(e.cat)}<span class="tag ${e.type==="want"?"want":""}">${e.type}</span><div class="mut">${esc(e.date)}${e.note?" · "+esc(e.note):""}</div></div><button class="del" data-del="${e.id}">✕</button></div>`).join("")||`<div class="mut">Nothing logged yet. Tap Add.</div>`;
+  document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{if(confirm("Delete this expense?")){S.expenses=S.expenses.filter(e=>e.id!==b.dataset.del);save();render()}});
+
+  renderWait();renderReport();
+  $("bTotal").value=S.monthly||"";
+  CATS.forEach((c,i)=>{const el=$("bc"+i);if(document.activeElement!==el)el.value=S.budgets[c]||""});
+}
+
+// add
+$("save").onclick=()=>{
+  const amt=parseFloat($("amt").value);
+  const m=$("addMsg");
+  if(!(amt>0)){m.className="alert bad";m.textContent="Enter a valid amount.";return}
+  const type=document.querySelector("input[name=nw]:checked").value;
+  S.expenses.push({id:uid(),amt,cat:$("cat").value,type,note:$("note").value.trim(),date:$("date").value||today()});
+  save();
+  let msg="Saved ✓",cls="ok";
+  if(type==="want"){msg="Saved. That was a want. Could it have waited 24 hours?";cls="warn"}
+  m.className="alert "+cls;m.textContent=msg;
+  $("amt").value="";$("note").value="";render();
+};
+
+// wait-list
+function renderWait(){
+  $("wSaved").textContent=inr(S.waitSaved||0);
+  const now=Date.now();
+  $("wList").innerHTML=S.wait.map(w=>{
+    const left=w.until-now;
+    if(left>0){const h=Math.floor(left/36e5),m=Math.floor(left%36e5/6e4);
+      return `<div class="item"><div class="row"><b>${esc(w.item)}</b><span>${inr(w.amt)}</span></div><div class="mut">Wait ${h}h ${m}m more</div><button class="del" data-wd="${w.id}">Remove</button></div>`}
+    return `<div class="item"><div class="row"><b>${esc(w.item)}</b><span>${inr(w.amt)}</span></div><div class="mut">24 hours passed. Still want it?</div><div class="row" style="margin-top:6px"><button class="sm" data-buy="${w.id}">Yes, buy &amp; log</button><button class="sm sec" data-skip="${w.id}">No, skip it</button></div></div>`}).join("")||`<div class="mut">Empty. Good.</div>`;
+  document.querySelectorAll("[data-wd]").forEach(b=>b.onclick=()=>{S.wait=S.wait.filter(w=>w.id!==b.dataset.wd);save();render()});
+  document.querySelectorAll("[data-skip]").forEach(b=>b.onclick=()=>{const w=S.wait.find(x=>x.id===b.dataset.skip);S.waitSaved=(S.waitSaved||0)+w.amt;S.wait=S.wait.filter(x=>x!==w);save();render()});
+  document.querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>{const w=S.wait.find(x=>x.id===b.dataset.buy);S.expenses.push({id:uid(),amt:w.amt,cat:"Shopping",type:"want",note:w.item,date:today()});S.wait=S.wait.filter(x=>x!==w);save();render()});
+}
+$("wAdd").onclick=()=>{
+  const item=$("wItem").value.trim(),amt=parseFloat($("wAmt").value);
+  if(!item||!(amt>0))return alert("Enter item and price.");
+  S.wait.push({id:uid(),item,amt,until:Date.now()+864e5});save();
+  $("wItem").value="";$("wAmt").value="";render();
+};
+setInterval(()=>{if(!$("wait").classList.contains("hide"))renderWait()},60000);
+
+// report
+function renderReport(){
+  const days=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());days.push(d.toISOString().slice(0,10))}
+  const wk=S.expenses.filter(e=>e.date>=days[0]&&e.date<=days[6]);
+  const tot=sum(wk),want=sum(wk.filter(e=>e.type==="want"));
+  $("wkTot").textContent=inr(tot);
+  $("wkWant").textContent=tot?`${Math.round(want/tot*100)}% was wants`:"";
+  // chart
+  const cv=$("chart"),x=cv.getContext("2d"),W=cv.width,H=cv.height;
+  x.clearRect(0,0,W,H);
+  const vals=days.map(d=>sum(wk.filter(e=>e.date===d))),mx=Math.max(1,...vals);
+  const cs=getComputedStyle(document.body);
+  const bw=W/7;x.font="22px sans-serif";x.textAlign="center";
+  vals.forEach((v,i)=>{const h=(H-60)*v/mx;
+    x.fillStyle=cs.getPropertyValue("--pri");x.fillRect(i*bw+14,H-36-h,bw-28,h);
+    x.fillStyle=cs.getPropertyValue("--mut");
+    x.fillText(new Date(days[i]+"T00:00").toLocaleDateString("en-IN",{weekday:"short"}),i*bw+bw/2,H-10);
+    if(v>0)x.fillText(Math.round(v),i*bw+bw/2,H-42-h)});
+  // leaks
+  const lk={};wk.filter(e=>e.type==="want").forEach(e=>lk[e.cat]=(lk[e.cat]||0)+e.amt);
+  const top=Object.entries(lk).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  $("leaks").innerHTML=top.length?top.map(([c,v],i)=>`<div class="item row"><span>${i+1}. ${esc(c)}</span><b>${inr(v)}</b></div>`).join("")+`<div class="mut" style="margin-top:6px">Cutting these by half would save about ${inr(top.reduce((t,a)=>t+a[1],0)/2)} a week.</div>`:`<div class="mut">No "want" spending logged this week. Nice.</div>`;
+  // goal
+  const g=S.goal;
+  $("goalView").innerHTML=g?(()=>{const p=Math.min(100,g.saved/g.target*100);return `<div class="row"><b>${esc(g.name)}</b><span>${inr(g.saved)} / ${inr(g.target)}</span></div><div class="bar"><i style="width:${p}%"></i></div>`})():`<div class="mut">No goal yet.</div>`;
+}
+$("gSet").onclick=()=>{const n=$("gName").value.trim(),t=parseFloat($("gTarget").value);if(!n||!(t>0))return alert("Enter a name and target.");S.goal={name:n,target:t,saved:S.goal?S.goal.saved:0};save();render()};
+$("gAddBtn").onclick=()=>{const a=parseFloat($("gAdd").value);if(!S.goal)return alert("Set a goal first.");if(!(a>0))return;S.goal.saved+=a;$("gAdd").value="";save();render()};
+
+// budgets
+$("bSave").onclick=()=>{
+  S.monthly=parseFloat($("bTotal").value)||0;
+  CATS.forEach((c,i)=>{const v=parseFloat($("bc"+i).value);if(v>0)S.budgets[c]=v;else delete S.budgets[c]});
+  save();render();alert("Budgets saved.");
+};
+
+// backup
+function dl(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
+$("exp").onclick=()=>dl("expense-backup-"+today()+".json",JSON.stringify(S),"application/json");
+$("exCsv").onclick=()=>dl("expense-"+today()+".csv","date,amount,category,type,note\n"+S.expenses.map(e=>[e.date,e.amt,e.cat,e.type,'"'+(e.note||"").replace(/"/g,'""')+'"'].join(",")).join("\n"),"text/csv");
+$("impBtn").onclick=()=>$("imp").click();
+$("imp").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.expenses))throw 0;if(confirm("Replace current data with this backup?")){S=Object.assign({expenses:[],monthly:0,budgets:{},wait:[],waitSaved:0,goal:null},d);save();render()}}catch(_){alert("Not a valid backup file.")}};
+  r.readAsText(f)};
+
+render();
+</script>
+</body>
+</html>
